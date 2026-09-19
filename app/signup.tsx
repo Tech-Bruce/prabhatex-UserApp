@@ -35,19 +35,25 @@ export default function SignupScreen() {
   const clearFieldError = (field: keyof SignupErrors) => setErrors((current) => ({ ...current, [field]: undefined }));
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
   });
 
   React.useEffect(() => {
     if (response?.type === 'success') {
-      const { id_token } = response.params;
+      const id_token = response.params?.id_token || response.authentication?.idToken;
       if (id_token) {
         setLoading(true);
         signInWithGoogle({ credential: id_token })
           .then(() => router.replace('/'))
           .catch((error) => setSubmitError(toApiError(error).message))
           .finally(() => setLoading(false));
+      } else {
+        setSubmitError("Failed to get Google ID token");
       }
+    } else if (response?.type === 'error') {
+      setSubmitError(response.error ? String(response.error) : "Google sign in failed");
     }
   }, [response]);
 
