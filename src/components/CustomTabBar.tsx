@@ -87,7 +87,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   return (
     <View style={[styles.container, { height: TOTAL_HEIGHT }]}>
       {/* 1. Sliding Background Curve */}
-      <View style={[StyleSheet.absoluteFillObject, styles.bgContainer]}>
+      <View style={[StyleSheet.absoluteFill, styles.bgContainer]}>
         <AnimatedSvg
           width={svgWidth}
           height={TOTAL_HEIGHT}

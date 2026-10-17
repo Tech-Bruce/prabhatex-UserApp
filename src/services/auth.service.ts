@@ -49,7 +49,7 @@ export const authService = {
     return data;
   },
   async verifyOtp(phoneNumber: string, otp: string) {
-    const { data } = await axiosInstance.post<{ success: true; message: string }>('/verify-otp', { phoneNumber, otp });
+    const { data } = await axiosInstance.post<{ success: true; message: string }>('/verify-reset-otp', { phoneNumber, otp });
     return data;
   },
   async resetPassword(phoneNumber: string, otp: string, newPassword: string) {

@@ -2,11 +2,12 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, Platform, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/src/theme/colors';
+import { GoogleIcon } from './GoogleIcon';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   loading?: boolean;
-  variant?: 'primary' | 'secondary' | 'outline' | 'text';
+  variant?: 'primary' | 'secondary' | 'outline' | 'text' | 'google';
   icon?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }
@@ -26,6 +27,8 @@ export const Button = ({
       case 'outline':
       case 'text':
         return styles.outlineText;
+      case 'google':
+        return styles.googleText;
       case 'secondary':
         return styles.secondaryText;
       case 'primary':
@@ -34,13 +37,25 @@ export const Button = ({
     }
   };
 
+  const resolvedIcon = icon ? icon : (variant === 'google' ? <GoogleIcon size={20} /> : null);
+
   const content = loading ? (
-    <ActivityIndicator color={variant === 'outline' || variant === 'text' ? colors.primary : colors.white} />
+    <ActivityIndicator color={variant === 'google' ? '#4285F4' : (variant === 'outline' || variant === 'text' ? colors.primary : colors.white)} />
   ) : (
-    <View style={styles.contentRow}>
-      {icon && <View style={styles.iconContainer}>{icon}</View>}
-      <Text style={[styles.text, getTextStyle()]}>{title}</Text>
-    </View>
+    <>
+      <View style={styles.contentRow}>
+        {resolvedIcon && <View style={styles.iconContainer}>{resolvedIcon}</View>}
+        <Text style={[styles.text, getTextStyle()]}>{title}</Text>
+      </View>
+      {variant === 'google' && (
+        <View style={styles.googleColorBar} pointerEvents="none">
+          <View style={[styles.googleColorSegment, { backgroundColor: '#4285F4' }]} />
+          <View style={[styles.googleColorSegment, { backgroundColor: '#EA4335' }]} />
+          <View style={[styles.googleColorSegment, { backgroundColor: '#FBBC05' }]} />
+          <View style={[styles.googleColorSegment, { backgroundColor: '#34A853' }]} />
+        </View>
+      )}
+    </>
   );
 
   return (
@@ -76,6 +91,7 @@ export const Button = ({
 
 const getContainerStyle = (variant: string) => {
   switch (variant) {
+    case 'google': return styles.googleContainer;
     case 'secondary': return styles.secondaryContainer;
     case 'outline': return styles.outlineContainer;
     case 'text': return styles.textContainer;
@@ -89,6 +105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
   primaryGradientContainer: {
     paddingVertical: 16,
@@ -97,6 +114,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
+  },
+  googleContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    minHeight: 56,
+    shadowColor: '#4285F4',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1.2,
+    borderColor: '#E5E7EB',
+  },
+  googleColorBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    flexDirection: 'row',
+  },
+  googleColorSegment: {
+    flex: 1,
+    height: '100%',
   },
   secondaryContainer: {
     backgroundColor: colors.surface,
@@ -127,17 +169,24 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-  pressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
+  pressed: { transform: [{ scale: 0.985 }], opacity: 0.92 },
   text: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   primaryText: {
     color: colors.white,
+    fontSize: 18,
   },
   secondaryText: {
     color: '#374151',
     fontWeight: '600',
+  },
+  googleText: {
+    color: '#1F2937',
+    fontWeight: '600',
+    fontSize: 16,
+    letterSpacing: 0.2,
   },
   textText: {
     color: '#660000',
@@ -152,6 +201,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    marginRight: 10,
+    marginRight: 12,
   }
 });
+

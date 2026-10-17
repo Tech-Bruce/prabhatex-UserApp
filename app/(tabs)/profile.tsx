@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -13,26 +13,25 @@ export default function ProfileScreen() {
   const { wishlist } = useWishlist();
   const router = useRouter();
 
-  const [activeOrder, setActiveOrder] = useState<any>(null);
   const [addressCount, setAddressCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [orderStats, setOrderStats] = useState({
-    processing: 0,
-    shipped: 0,
-    delivered: 0,
-    returns: 0
-  });
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
       const fetchProfileData = async () => {
-        if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
         try {
           const [ordersRes, addressRes] = await Promise.all([
-            api.get('/my-orders'),
-            api.get('/address')
+            api.get('/my-orders').catch(() => ({ data: { orders: [] } })),
+            api.get('/address').catch(() => ({ data: { data: [] } })),
           ]);
 
           if (isActive) {
@@ -40,28 +39,7 @@ export default function ProfileScreen() {
             const addresses = addressRes.data.data || [];
             
             setAddressCount(addresses.length);
-
-            let processing = 0, shipped = 0, delivered = 0, returns = 0;
-            let latestActiveOrder: any = null;
-
-            orders.forEach((o: any) => {
-              const s = o.status?.toLowerCase() || '';
-              if (s === 'processing' || s === 'pending') processing++;
-              else if (s === 'shipped') shipped++;
-              else if (s === 'delivered') delivered++;
-              else if (s === 'returned' || s === 'returns') returns++;
-
-              if (s !== 'delivered' && s !== 'returned' && s !== 'cancelled') {
-                if (!latestActiveOrder) latestActiveOrder = o;
-              }
-            });
-
-            if (!latestActiveOrder && orders.length > 0) {
-              latestActiveOrder = orders[0];
-            }
-
-            setOrderStats({ processing, shipped, delivered, returns });
-            setActiveOrder(latestActiveOrder);
+            setOrderCount(orders.length);
             setLoading(false);
           }
         } catch (error) {
@@ -80,41 +58,27 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => signOut() },
-    ]);
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
+    }
   };
 
   // Generate initials
   const initials = user?.username 
-    ? user.username.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    ? user.username.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
     : 'U';
 
-  const renderSectionHeader = (title: string, actionText?: string, onAction?: () => void) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {actionText && (
-        <TouchableOpacity onPress={onAction}>
-          <Text style={styles.sectionAction}>{actionText} <Ionicons name="chevron-forward" size={12} /></Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
 
-  const renderOrderStat = (icon: keyof typeof MaterialCommunityIcons.glyphMap, label: string, count: number, route: any) => (
-    <TouchableOpacity style={styles.orderStatItem} onPress={() => router.push(route)}>
-      <View style={styles.orderStatIconBox}>
-        <MaterialCommunityIcons name={icon} size={28} color="#850404" />
-        {count > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{count}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.orderStatLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
 
   const renderListItem = (icon: keyof typeof Ionicons.glyphMap, title: string, route: any, subtitle?: string, isLast = false) => (
     <TouchableOpacity style={[styles.listItem, !isLast && styles.listItemBorder]} onPress={() => router.push(route)}>
@@ -164,45 +128,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {loading ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#850404" />
+            {loading && (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#850404" />
               </View>
-            ) : (
-              <>
-                {/* My Orders */}
-                <View style={styles.section}>
-                  {renderSectionHeader('My Orders', 'View all', () => router.push('/orders'))}
-                  
-                  <View style={styles.orderStatsRow}>
-                    {renderOrderStat('package-variant', 'Processing', orderStats.processing, '/orders?status=processing')}
-                    {renderOrderStat('truck-delivery-outline', 'Shipped', orderStats.shipped, '/orders?status=shipped')}
-                    {renderOrderStat('checkbox-marked-outline', 'Delivered', orderStats.delivered, '/orders?status=delivered')}
-                    {renderOrderStat('keyboard-return', 'Returns', orderStats.returns, '/orders?status=returns')}
-                  </View>
-
-                  {/* Active Order Card */}
-                  {activeOrder && (
-                    <View style={styles.activeOrderCard}>
-                      <View style={styles.orderDetails}>
-                        <Text style={styles.orderProductName} numberOfLines={1}>
-                          Order #{activeOrder.orderNumber || activeOrder.id?.substring(0,8)}
-                        </Text>
-                        <Text style={styles.orderId}>Placed on {new Date(activeOrder.createdAt).toLocaleDateString()}</Text>
-                        <View style={styles.orderStatusRow}>
-                          <View style={styles.statusBadge}>
-                            <Text style={styles.statusBadgeText}>{activeOrder.status}</Text>
-                          </View>
-                          <Text style={styles.orderDate}>Total: ₹{activeOrder.totalAmount}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity style={styles.trackButton} onPress={() => router.push('/track-order')}>
-                        <Text style={styles.trackButtonText}>Track Order</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </>
             )}
           </>
         ) : (
@@ -220,6 +149,12 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitlePlain}>Account</Text>
           <View style={styles.listCard}>
+            {renderListItem(
+              'bag-handle-outline',
+              'My Orders',
+              '/orders',
+              user ? (orderCount > 0 ? `${orderCount} order${orderCount === 1 ? '' : 's'} placed` : 'View order history & track items') : 'Sign in to view orders'
+            )}
             {renderListItem('location-outline', 'Saved Addresses', '/addresses', `${addressCount} delivery address${addressCount === 1 ? '' : 'es'}`)}
             {renderListItem('heart-outline', 'Wishlist', '/wishlist', `${wishlist.length} saved item${wishlist.length === 1 ? '' : 's'}`, true)}
           </View>
@@ -244,6 +179,55 @@ export default function ProfileScreen() {
 
         <View style={styles.footerSpace} />
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => !isLoggingOut && setShowLogoutModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalBackdrop} 
+          activeOpacity={1} 
+          onPress={() => !isLoggingOut && setShowLogoutModal(false)}
+        >
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="log-out-outline" size={28} color="#850404" />
+            </View>
+
+            <Text style={styles.modalTitle}>Log Out</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to log out of your Prabha Tex account?
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleConfirmLogout}
+                disabled={isLoggingOut}
+                activeOpacity={0.8}
+              >
+                {isLoggingOut ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Log Out</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -458,132 +442,11 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
   sectionTitlePlain: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 12,
-  },
-  sectionAction: {
-    fontSize: 13,
-    color: '#850404',
-    fontWeight: '600',
-  },
-  orderStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  orderStatItem: {
-    alignItems: 'center',
-    width: '23%',
-  },
-  orderStatIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(133, 4, 4, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    position: 'relative',
-    backgroundColor: '#FFF',
-  },
-  badge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#850404',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
-  },
-  orderStatLabel: {
-    fontSize: 11,
-    color: '#444',
-    fontWeight: '500',
-  },
-  activeOrderCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0EBE1',
-    position: 'relative',
-  },
-  orderImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  orderDetails: {
-    flex: 1,
-  },
-  orderProductName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
-    paddingRight: 80, // space for track button
-  },
-  orderId: {
-    fontSize: 11,
-    color: '#888',
-    marginBottom: 4,
-  },
-  orderStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusBadgeText: {
-    color: '#2E7D32',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  orderDate: {
-    fontSize: 10,
-    color: '#666',
-  },
-  trackButton: {
-    position: 'absolute',
-    right: 12,
-    top: 30, // vertically center aligned roughly
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#850404',
-  },
-  trackButtonText: {
-    color: '#850404',
-    fontSize: 11,
-    fontWeight: '600',
   },
   listCard: {
     backgroundColor: '#FFF',
@@ -672,5 +535,88 @@ const styles = StyleSheet.create({
   },
   footerSpace: {
     height: 60,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingTop: 28,
+    paddingBottom: 22,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalIconContainer: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#FEF0EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FDE0DF',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1C1917',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#78716C',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: '#F3F1ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#44403C',
+  },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: '#850404',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#850404',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

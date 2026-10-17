@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { AuthScreen, FormMessage } from '@/src/components/AuthScreen';
@@ -12,8 +12,10 @@ import { colors, spacing } from '@/src/theme/colors';
 import { toApiError } from '@/src/utils/axiosInstance';
 import { type SignupErrors, validateSignup } from '@/src/utils/authValidation';
 
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { configureGoogleSignIn, promptGoogleSignIn } from '@/src/services/googleAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,11 +36,20 @@ export default function SignupScreen() {
 
   const clearFieldError = (field: keyof SignupErrors) => setErrors((current) => ({ ...current, [field]: undefined }));
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+  // Expo AuthSession fallback for Web / Expo Go
+  const redirectUri = makeRedirectUri({
+    scheme: 'prabhatex',
   });
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    redirectUri,
+  });
+
+  React.useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   React.useEffect(() => {
     if (response?.type === 'success') {
@@ -53,9 +64,45 @@ export default function SignupScreen() {
         setSubmitError("Failed to get Google ID token");
       }
     } else if (response?.type === 'error') {
-      setSubmitError(response.error ? String(response.error) : "Google sign in failed");
+      const errorObj = response.error as any;
+      const errorMsg = errorObj?.description || errorObj?.message || String(response.error || '');
+      if (errorMsg.includes('Cross-Site') || errorMsg.includes('state_mismatch')) {
+        setSubmitError('Google sign-in was cancelled or interrupted. Please try again.');
+      } else if (errorMsg) {
+        setSubmitError(errorMsg);
+      }
     }
   }, [response]);
+
+  const handleGooglePress = async () => {
+    setSubmitError('');
+    setLoading(true);
+    try {
+      const result = await promptGoogleSignIn();
+      if (result.cancelled) {
+        setLoading(false);
+        return;
+      }
+      if (result.useFallback) {
+        // Fallback for Web or environments without native Google Play module
+        promptAsync();
+        return;
+      }
+      if (result.error) {
+        setSubmitError(result.error);
+        setLoading(false);
+        return;
+      }
+      if (result.idToken) {
+        await signInWithGoogle({ credential: result.idToken });
+        router.replace('/');
+      }
+    } catch (err) {
+      setSubmitError(toApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isHydrating && user) return <Redirect href="/" />;
 
@@ -149,7 +196,12 @@ export default function SignupScreen() {
       </View>
       <Button title="Create Account" onPress={handleSignup} loading={loading} disabled={isOffline || isHydrating} />
       <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>or continue with</Text><View style={styles.dividerLine} /></View>
-      <Button title="Continue with Google" variant="secondary" icon={<Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png' }} style={{ width: 20, height: 20 }} />} onPress={() => promptAsync()} disabled={!request || loading || isOffline} />
+      <Button 
+        title="Continue with Google" 
+        variant="google" 
+        onPress={handleGooglePress} 
+        disabled={loading || isOffline} 
+      />
       <View style={styles.footer}><Text style={styles.footerText}>Already have an account?</Text><Button title="Sign In" variant="text" onPress={() => router.replace('/login')} disabled={loading} /></View>
     </AuthScreen>
   );

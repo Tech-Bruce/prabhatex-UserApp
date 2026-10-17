@@ -101,7 +101,18 @@ export default function OrdersScreen() {
             const displayStatus = s.charAt(0).toUpperCase() + s.slice(1);
 
             return (
-              <View key={order.id} style={styles.orderCard}>
+              <TouchableOpacity 
+                key={order.id} 
+                style={styles.orderCard}
+                activeOpacity={0.9}
+                onPress={() => router.push({
+                  pathname: '/order-details',
+                  params: {
+                    orderId: order.id,
+                    orderData: JSON.stringify(order)
+                  }
+                })}
+              >
                 <View style={styles.orderHeader}>
                   <Text style={styles.orderId}>Order #{order.orderNumber || order.id.substring(0,8)}</Text>
                   <View style={[styles.statusBadge, displayStatus === 'Delivered' && styles.statusDelivered, displayStatus === 'Returned' && styles.statusReturned]}>
@@ -121,7 +132,16 @@ export default function OrdersScreen() {
                 </View>
 
                 <View style={styles.orderFooter}>
-                  <TouchableOpacity style={styles.detailsButton}>
+                  <TouchableOpacity 
+                    style={styles.detailsButton}
+                    onPress={() => router.push({
+                      pathname: '/order-details',
+                      params: {
+                        orderId: order.id,
+                        orderData: JSON.stringify(order)
+                      }
+                    })}
+                  >
                     <Text style={styles.detailsButtonText}>View Details</Text>
                   </TouchableOpacity>
                   {order.awbNo && (s === 'processing' || s === 'pending' || s === 'shipped') && (
@@ -140,7 +160,7 @@ export default function OrdersScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}

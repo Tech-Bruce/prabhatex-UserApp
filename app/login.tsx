@@ -11,8 +11,10 @@ import { colors, spacing } from '@/src/theme/colors';
 import { toApiError } from '@/src/utils/axiosInstance';
 import { type LoginErrors, validateLogin } from '@/src/utils/authValidation';
 
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { configureGoogleSignIn, promptGoogleSignIn } from '@/src/services/googleAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,11 +31,20 @@ export default function LoginScreen() {
 
   const clearFieldError = (field: keyof LoginErrors) => setErrors((current) => ({ ...current, [field]: undefined }));
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+  // Expo AuthSession fallback for Web / Expo Go
+  const redirectUri = makeRedirectUri({
+    scheme: 'prabhatex',
   });
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    redirectUri,
+  });
+
+  React.useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   React.useEffect(() => {
     if (response?.type === 'success') {
@@ -48,9 +59,45 @@ export default function LoginScreen() {
         setSubmitError("Failed to get Google ID token");
       }
     } else if (response?.type === 'error') {
-      setSubmitError(response.error ? String(response.error) : "Google sign in failed");
+      const errorObj = response.error as any;
+      const errorMsg = errorObj?.description || errorObj?.message || String(response.error || '');
+      if (errorMsg.includes('Cross-Site') || errorMsg.includes('state_mismatch')) {
+        setSubmitError('Google sign-in was cancelled or interrupted. Please try again.');
+      } else if (errorMsg) {
+        setSubmitError(errorMsg);
+      }
     }
   }, [response]);
+
+  const handleGooglePress = async () => {
+    setSubmitError('');
+    setLoading(true);
+    try {
+      const result = await promptGoogleSignIn();
+      if (result.cancelled) {
+        setLoading(false);
+        return;
+      }
+      if (result.useFallback) {
+        // Fallback for Web or environments without native Google Play module
+        promptAsync();
+        return;
+      }
+      if (result.error) {
+        setSubmitError(result.error);
+        setLoading(false);
+        return;
+      }
+      if (result.idToken) {
+        await signInWithGoogle({ credential: result.idToken });
+        router.replace('/');
+      }
+    } catch (err) {
+      setSubmitError(toApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isHydrating && user) return <Redirect href="/" />;
 
@@ -109,7 +156,12 @@ export default function LoginScreen() {
       </View>
       <Button title="Sign In" onPress={handleLogin} loading={loading} disabled={isOffline || isHydrating} />
       <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>or continue with</Text><View style={styles.dividerLine} /></View>
-      <Button title="Continue with Google" variant="secondary" icon={<Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png' }} style={{ width: 20, height: 20 }} />} onPress={() => promptAsync()} disabled={!request || loading || isOffline} />
+      <Button 
+        title="Continue with Google" 
+        variant="google" 
+        onPress={handleGooglePress} 
+        disabled={loading || isOffline} 
+      />
       <View style={styles.footer}><Text style={styles.footerText}>New to Prabha Tex?</Text><Button title="Create Account" variant="text" onPress={() => router.push('/signup')} disabled={loading} /></View>
       <View style={styles.secureContainer}>
         <Ionicons name="shield-checkmark" size={16} color="#6B7280" />
@@ -128,5 +180,5 @@ const styles = StyleSheet.create({
   footer: { marginTop: spacing.xl, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: spacing.xs },
   footerText: { color: colors.textMuted, fontSize: 14, fontStyle: 'normal' },
   secureContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xxl, gap: spacing.xs },
-  secureText: { color: '#6B7280', fontSize: 12, fontWeight: '500' }
+  secureText: { color: '#4b4c4dff', fontSize: 12, fontWeight: '500' }
 });

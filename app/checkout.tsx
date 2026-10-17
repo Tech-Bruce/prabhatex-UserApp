@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Image, Modal, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useCart } from '@/src/context/CartContext';
 import { useAuth } from '@/src/context/AuthContext';
 import api from '@/src/utils/axiosInstance';
@@ -81,10 +82,16 @@ export default function CheckoutScreen() {
       setPlacingOrder(false);
     };
 
-    try {
-      CFPaymentGatewayService.setCallback({ onVerify, onError });
-    } catch (e: any) {
-      console.warn('Cashfree SDK is not linked. This happens if you are using Expo Go instead of a dev build.');
+    const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+    if (!isExpoGo) {
+      try {
+        CFPaymentGatewayService.setCallback({ onVerify, onError });
+      } catch (e: any) {
+        console.log('Cashfree SDK setCallback skipped:', e.message);
+      }
+    } else {
+      console.log('Running in Expo Go: Cashfree native SDK is not linked. Use a development build or APK for native payments.');
     }
 
     return () => {
@@ -284,10 +291,25 @@ export default function CheckoutScreen() {
 
       // Start Cashfree Payment
       try {
+        const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+        if (isExpoGo) {
+          Alert.alert(
+            "Expo Go Limitation",
+            "Cashfree native payment SDK cannot run inside standard Expo Go because custom native modules are not linked.\n\nTo test payments on your device, build a Development Build or APK:\n\n• Local: npx expo run:android\n• Cloud: eas build -p android --profile preview",
+            [{ text: "OK" }]
+          );
+          setPlacingOrder(false);
+          return;
+        }
+
+        const env = data.environment === 'production'
+          ? CFEnvironment.PRODUCTION
+          : CFEnvironment.SANDBOX;
+
         const session = new CFSession(
           data.paymentSessionId,
           data.cashfreeOrderId,
-          CFEnvironment.SANDBOX
+          env
         );
 
         CFPaymentGatewayService.doWebPayment(session);

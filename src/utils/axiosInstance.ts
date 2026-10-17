@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 const ACCESS_TOKEN_KEY = 'prabhatex_access_token';
 // Using the host's local IP address so it works on both physical devices and emulators:
+// export const API_URL = 'http://157.51.73.90/api/v1';
 // export const API_URL = 'http://10.93.111.50:8080/api/v1';
 export const API_URL = 'https://api.prabhatex.in/api/v1';
 let accessToken: string | null = null;
