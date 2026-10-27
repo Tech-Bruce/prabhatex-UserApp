@@ -51,7 +51,7 @@ export default function CategoryProductsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <SearchBarHeader 
         showFilter={true} 
         placeholder="Search products..."
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  listContent: { padding: 8 },
+  listContent: { padding: 8, paddingBottom: 24 },
   productCard: {
     flex: 1,
     margin: 8,

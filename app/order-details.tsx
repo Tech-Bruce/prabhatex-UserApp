@@ -198,7 +198,7 @@ export default function OrderDetailsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centerContainer} edges={['top']}>
+      <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#850404" />
         <Text style={styles.loadingText}>Loading order details...</Text>
       </SafeAreaView>
@@ -207,7 +207,7 @@ export default function OrderDetailsScreen() {
 
   if (error || !order) {
     return (
-      <SafeAreaView style={styles.centerContainer} edges={['top']}>
+      <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
         <Ionicons name="alert-circle-outline" size={56} color="#DC2626" />
         <Text style={styles.errorTitle}>Order Not Found</Text>
         <Text style={styles.errorSubtitle}>{error || 'Unable to display order details.'}</Text>
@@ -253,7 +253,7 @@ export default function OrderDetailsScreen() {
   const displayAwb = summary.awbNo || order.awbNo || null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity

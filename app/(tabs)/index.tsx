@@ -30,6 +30,7 @@ export default function HomeScreen() {
       <Header cartCount={3} />
       <ScrollView 
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 110 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#850404']} />
         }

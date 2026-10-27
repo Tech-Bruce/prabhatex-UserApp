@@ -7,7 +7,7 @@ import { CustomTabBar } from '@/src/components/CustomTabBar';
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props: any) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}

@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/src/utils/axiosInstance';
 
 export default function AddressesScreen() {
+  const insets = useSafeAreaInsets();
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -98,7 +99,7 @@ export default function AddressesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <Stack.Screen options={{ title: 'Saved Addresses', headerShown: true, headerShadowVisible: false, headerStyle: { backgroundColor: '#F8F6F0' } }} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -142,7 +143,7 @@ export default function AddressesScreen() {
         )))}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) + 10 }]}>
         <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addBtnText}>Add New Address</Text>

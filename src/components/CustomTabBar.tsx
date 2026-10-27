@@ -108,7 +108,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
       </Animated.View>
 
       {/* 3. Icons and Labels */}
-      <View style={[styles.tabContent, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.tabContent, { height: BAR_HEIGHT }]}>
         {visibleRoutes.map((route, index) => {
           const { options } = descriptors[route.key];
           const label = options.title !== undefined ? options.title : route.name;

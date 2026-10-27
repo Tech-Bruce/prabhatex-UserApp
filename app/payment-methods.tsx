@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Stack } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function PaymentMethodsScreen() {
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <Stack.Screen options={{ title: 'Payment Methods', headerShown: true, headerShadowVisible: false, headerStyle: { backgroundColor: '#F8F6F0' } }} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -43,7 +44,7 @@ export default function PaymentMethodsScreen() {
 
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) + 10 }]}>
         <TouchableOpacity style={styles.addBtn}>
           <Ionicons name="add" size={20} color="#850404" />
           <Text style={styles.addBtnText}>Add New Payment Method</Text>

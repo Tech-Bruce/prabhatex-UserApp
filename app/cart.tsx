@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '@/src/context/CartContext';
 import Toast from 'react-native-toast-message';
@@ -10,6 +10,7 @@ const { width } = Dimensions.get('window');
 
 export default function CartScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { cart, removeFromCart, updateQuantity, totalPrice, totalItems } = useCart();
 
   const handleCheckout = () => {
@@ -47,7 +48,7 @@ export default function CartScreen() {
   const finalTotal = totalPrice;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <Stack.Screen options={{ title: `Shopping Bag (${totalItems})`, headerShown: true, headerShadowVisible: false, headerStyle: { backgroundColor: '#F8F6F0' }, headerTitleStyle: { fontWeight: '700', fontSize: 18 } }} />
       
       {/* ScrollView now has flex: 1 to ensure the bottom bar stays sticky */}
@@ -119,7 +120,7 @@ export default function CartScreen() {
       </ScrollView>
 
       {/* Sticky Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) + 10 }]}>
         <View style={styles.bottomTotalCol}>
           <Text style={styles.bottomTotalLabel}>Grand Total</Text>
           <Text style={styles.bottomTotalValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>

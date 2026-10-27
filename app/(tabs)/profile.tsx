@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   footerSpace: {
-    height: 60,
+    height: 110,
   },
   modalBackdrop: {
     flex: 1,

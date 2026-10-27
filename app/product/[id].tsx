@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ActivityIndicator, ScrollView, Dimensions, TextInput, Modal, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/src/utils/axiosInstance';
@@ -32,6 +32,7 @@ interface Product {
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,7 +191,13 @@ export default function ProductDetailsScreen() {
         placeholder="Search products..."
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { paddingBottom: 80 + Math.max(insets.bottom, 12) + 10 }
+        ]}
+      >
         
         {/* ── IMAGE GALLERY CARD ── */}
         <View style={styles.galleryWrapper}>
@@ -411,7 +418,7 @@ export default function ProductDetailsScreen() {
       </ScrollView>
 
       {/* ── STICKY BOTTOM BAR ── */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 10 }]}>
         <TouchableOpacity style={styles.bottomWishlistBtn} onPress={handleToggleWishlist}>
           <Ionicons 
             name={isWishlisted ? "heart" : "heart-outline"} 
@@ -509,7 +516,7 @@ const styles = StyleSheet.create({
   // Gallery
   galleryWrapper: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: '#FAF8F5' },
   galleryContainer: { width: '100%', height: width * 1.2, position: 'relative', backgroundColor: '#F0F0F0', borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
-  mainImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  mainImage: { width: '100%', height: '100%', resizeMode: 'contain' },
   zoomHint: { position: 'absolute', bottom: 16, right: 16, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 16, width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
   imageOverlayTopRight: { position: 'absolute', top: 12, right: 12 },
   wishlistCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
@@ -576,7 +583,7 @@ const styles = StyleSheet.create({
   reviewDivider: { height: 8, backgroundColor: '#F5F5F5', marginVertical: 8 },
 
   // Bottom Bar
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', padding: 12, paddingBottom: 24, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', padding: 12, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
   bottomWishlistBtn: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#850404', borderRadius: 6 },
   addToCartBtn: { flex: 1, height: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#850404', borderRadius: 6 },
   addToCartBtnText: { color: '#850404', fontSize: 14, fontWeight: '700' },

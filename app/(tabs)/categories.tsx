@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   listContent: {
-    paddingBottom: 24,
+    paddingBottom: 110,
   },
   gridCard: {
     flex: 1,

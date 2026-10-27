@@ -115,7 +115,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <SearchBarHeader 
         placeholder="Search by name or SKU..."
         searchValue={query}

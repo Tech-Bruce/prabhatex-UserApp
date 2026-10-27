@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/src/context/AuthContext';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [name, setName] = useState(user?.username || 'Prabhatex');
   const [email, setEmail] = useState(user?.email || 'prabhatex@example.com');
   const [phone, setPhone] = useState(user?.phoneNumber || '+91 9876543210');
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <Stack.Screen options={{ title: 'Edit Profile', headerShown: true, headerShadowVisible: false, headerStyle: { backgroundColor: '#F8F6F0' } }} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -72,7 +73,7 @@ export default function EditProfileScreen() {
 
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) + 10 }]}>
         <TouchableOpacity style={styles.saveBtn} onPress={() => router.back()}>
           <Text style={styles.saveBtnText}>Save Changes</Text>
         </TouchableOpacity>
