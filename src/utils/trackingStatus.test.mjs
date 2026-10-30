@@ -281,3 +281,17 @@ test('11. Identifies ST Courier for 11-digit AWB 53048275210', () => {
     'ST Courier'
   );
 });
+
+test('12. Identifies Professional Courier as manual tracking with proper URL', () => {
+  const order = {
+    orderNumber: 'PT0100',
+    awbNo: 'PC987654321',
+    courierPartner: 'Professional Courier',
+    status: 'shipped',
+  };
+  const summary = deriveMilestoneAndSteps(order);
+  assert.equal(summary.courierName, 'Professional Courier');
+  assert.equal(summary.isManualTracking, true);
+  assert.equal(summary.isStCourier, false);
+  assert.equal(summary.trackingUrl, 'https://tpcglobe.com/track-info.aspx?id=PC987654321');
+});

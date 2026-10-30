@@ -53,6 +53,9 @@ export interface TrackingSummary {
   isUnsuccessfulAttempt: boolean;
   isReturnFlow: boolean;
   isCancelled: boolean;
+  isManualTracking: boolean;
+  isStCourier: boolean;
+  trackingUrl: string | null;
 }
 
 /** Known ST Courier status codes and aliases */
@@ -292,7 +295,24 @@ export function identifyCourierPartner(order?: any, tracking?: any, awbNo?: stri
   if (/^530\d{6,9}$/.test(cleanAwb) || /^ST/i.test(cleanAwb)) {
     return 'ST Courier';
   }
-  return 'ST Courier';
+  if (/^d\d+/i.test(cleanAwb)) {
+    return 'DTDC';
+  }
+  return 'Courier';
+}
+
+/** External tracking URL for courier partners */
+export function getCourierTrackingUrl(awbNo?: string | null, courierPartner?: string | null): string | null {
+  if (!awbNo) return null;
+  const partner = (courierPartner || '').toLowerCase();
+  if (partner.includes('dtdc')) return `https://www.dtdc.in/trace.asp?strCnno=${encodeURIComponent(awbNo)}`;
+  if (partner.includes('professional')) return `https://tpcglobe.com/track-info.aspx?id=${encodeURIComponent(awbNo)}`;
+  if (partner.includes('india post') || partner.includes('indian post'))
+    return `https://www.indiapost.gov.in/vas/pages/trackConsignment.aspx`;
+  if (partner.includes('st courier') || partner.includes('stcourier')) {
+    return 'https://www.stcourier.com/';
+  }
+  return null;
 }
 
 /**
@@ -322,6 +342,20 @@ export function deriveMilestoneAndSteps(order?: any, tracking?: any): TrackingSu
     null;
 
   const courierName = identifyCourierPartner(order, tracking, awbNo || undefined);
+  const isNonStCourier = courierName && !/st\s*courier/i.test(courierName);
+  if (isNonStCourier && events.length > 0) {
+    for (const ev of events) {
+      if (!ev.location || /st\s*courier/i.test(ev.location)) {
+        ev.location = courierName;
+      }
+      if (ev.statusText && /st\s*courier/i.test(ev.statusText)) {
+        ev.statusText = ev.statusText.replace(/st\s*courier/gi, courierName);
+      }
+      if (ev.plainDescription && /st\s*courier/i.test(ev.plainDescription)) {
+        ev.plainDescription = ev.plainDescription.replace(/st\s*courier/gi, courierName);
+      }
+    }
+  }
 
   // Normalized order fulfillment status and courier shipping status
   const orderStatus = String(order?.status || tracking?.status || '').toLowerCase().trim();
@@ -531,6 +565,10 @@ export function deriveMilestoneAndSteps(order?: any, tracking?: any): TrackingSu
     null;
   const expectedDeliveryDate = rawExpected ? formatIndianDateTime(rawExpected) : null;
 
+  const isStCourier = /st\s*courier/i.test(courierName);
+  const isManualTracking = !isStCourier;
+  const trackingUrl = getCourierTrackingUrl(awbNo, courierName);
+
   return {
     milestone,
     currentStepIndex,
@@ -542,6 +580,9 @@ export function deriveMilestoneAndSteps(order?: any, tracking?: any): TrackingSu
     steps,
     events,
     courierName,
+    isManualTracking,
+    isStCourier,
+    trackingUrl,
     awbNo: awbNo ? String(awbNo).trim() : null,
     isDelivered: milestone === 'delivered',
     isOutForDelivery: milestone === 'out_for_delivery',

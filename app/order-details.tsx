@@ -597,7 +597,27 @@ export default function OrderDetailsScreen() {
                       <MaterialCommunityIcons name="truck-delivery-outline" size={18} color="#850404" />
                     </View>
                     <View style={{ marginLeft: 8 }}>
-                      <Text style={styles.courierPartnerName}>{summary.courierName}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.courierPartnerName}>{summary.courierName}</Text>
+                        <View
+                          style={{
+                            backgroundColor: summary.isManualTracking ? '#FEF3C7' : '#EFF6FF',
+                            paddingHorizontal: 5,
+                            paddingVertical: 1,
+                            borderRadius: 4,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: '700',
+                              color: summary.isManualTracking ? '#92400E' : '#1D4ED8',
+                            }}
+                          >
+                            {summary.isManualTracking ? 'Manual' : 'ST Courier'}
+                          </Text>
+                        </View>
+                      </View>
                       <Text style={styles.courierAwbText}>AWB: {displayAwb}</Text>
                     </View>
                   </View>
@@ -633,6 +653,7 @@ export default function OrderDetailsScreen() {
                         price: String(finalTotal),
                         qty: String(primaryItem?.quantity || 1),
                         createdAt: order.createdAt,
+                        courierPartner: order.courierPartner || summary.courierName,
                       },
                     })
                   }

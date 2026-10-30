@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -93,6 +94,7 @@ export default function TrackOrderScreen() {
       awbNo: awbNoParam,
       status: tracking?.status,
       shippingStatus: tracking?.shippingStatus,
+      courierPartner: tracking?.courierPartner || (params.courierPartner as string),
       createdAt: params.createdAt as string,
     },
     tracking
@@ -182,14 +184,34 @@ export default function TrackOrderScreen() {
           </View>
         </View>
 
-        {/* Courier Info Card with Working Copy Button */}
+        {/* Courier Info Card with Working Copy Button & External Tracking */}
         <View style={styles.card}>
           <View style={styles.courierRow}>
             <View style={styles.courierIconWrap}>
               <MaterialCommunityIcons name="truck-fast-outline" size={24} color="#850404" />
             </View>
             <View style={styles.courierTextCol}>
-              <Text style={styles.courierLabel}>Courier Partner</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.courierLabel}>Courier Partner</Text>
+                <View
+                  style={{
+                    backgroundColor: summary.isManualTracking ? '#FEF3C7' : '#EFF6FF',
+                    paddingHorizontal: 6,
+                    paddingVertical: 1,
+                    borderRadius: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '700',
+                      color: summary.isManualTracking ? '#92400E' : '#1D4ED8',
+                    }}
+                  >
+                    {summary.isManualTracking ? 'Manual Tracking' : 'ST Courier Express'}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.courierName}>{summary.courierName}</Text>
               <View style={styles.awbRow}>
                 <Text style={styles.awbLabel}>AWB: </Text>
@@ -215,6 +237,20 @@ export default function TrackOrderScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* External Courier Portal Link */}
+          {summary.trackingUrl ? (
+            <TouchableOpacity
+              style={styles.externalTrackingBtn}
+              onPress={() => Linking.openURL(summary.trackingUrl!)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="open-outline" size={14} color="#850404" />
+              <Text style={styles.externalTrackingBtnText}>
+                Track directly on {summary.courierName} website
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Loading Spinner */}
@@ -427,7 +463,7 @@ export default function TrackOrderScreen() {
             </View>
 
             {/* SHIPMENT HISTORY */}
-            {summary.events.length > 0 && (
+            {summary.events.length > 0 ? (
               <View style={styles.card}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionTitle}>Shipment History</Text>
@@ -538,6 +574,18 @@ export default function TrackOrderScreen() {
                     />
                   </TouchableOpacity>
                 )}
+              </View>
+            ) : (
+              <View style={[styles.card, { alignItems: 'center', paddingVertical: 24 }]}>
+                <MaterialCommunityIcons name="truck-outline" size={32} color="#A8A29E" />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1C1917', marginTop: 8 }}>
+                  {summary.isManualTracking ? `Dispatched via ${summary.courierName}` : 'Awaiting First Courier Scan'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#78716C', textAlign: 'center', marginTop: 4, paddingHorizontal: 20 }}>
+                  {summary.isManualTracking
+                    ? 'Shipment is in transit. Updates are managed via manual tracking updates.'
+                    : 'Your order has been booked. Courier tracking updates will appear as the package moves.'}
+                </Text>
               </View>
             )}
           </>
@@ -710,6 +758,21 @@ const styles = StyleSheet.create({
   },
   copyButtonTextActive: {
     color: '#15803D',
+  },
+  externalTrackingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F4',
+  },
+  externalTrackingBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#850404',
   },
   loadingCard: {
     backgroundColor: '#FFFFFF',
