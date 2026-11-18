@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -21,6 +23,7 @@ const COLORS = {
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   // Custom height excluding safe area
   const BAR_HEIGHT = 75;
@@ -32,7 +35,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     return (options as any).href !== null && route.name !== 'orders';
   });
 
-  const tabWidth = width / visibleRoutes.length;
+  const tabWidth = width / (visibleRoutes.length || 1);
 
   // Animated value for the sliding circle and curve (0 to N-1)
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -42,12 +45,14 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const activeIndex = visibleRoutes.findIndex(r => r.key === activeRoute.key);
 
   useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: activeIndex,
-      useNativeDriver: true,
-      tension: 60,
-      friction: 8,
-    }).start();
+    if (activeIndex >= 0) {
+      Animated.spring(slideAnim, {
+        toValue: activeIndex,
+        useNativeDriver: true,
+        tension: 60,
+        friction: 8,
+      }).start();
+    }
   }, [activeIndex]);
 
   // SVG background sliding logic
@@ -74,20 +79,28 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   // Translate to correctly position SVG center on X=0
   const baseTranslate = -svgCenter;
 
+  const inputRange = visibleRoutes.length > 1 ? visibleRoutes.map((_, i) => i) : [0, 1];
+  const bgOutputRange = visibleRoutes.length > 1
+    ? visibleRoutes.map((_, i) => baseTranslate + tabWidth * (i + 0.5))
+    : [baseTranslate + tabWidth / 2, baseTranslate + tabWidth * 1.5];
+  const circleOutputRange = visibleRoutes.length > 1
+    ? visibleRoutes.map((_, i) => tabWidth * (i + 0.5) - 32)
+    : [tabWidth / 2 - 32, tabWidth * 1.5 - 32];
+
   const bgTranslateX = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [baseTranslate + tabWidth / 2, baseTranslate + tabWidth * 1.5],
+    inputRange,
+    outputRange: bgOutputRange,
   });
 
   const circleTranslateX = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [tabWidth / 2 - 32, tabWidth * 1.5 - 32]
+    inputRange,
+    outputRange: circleOutputRange,
   });
 
   return (
     <View style={[styles.container, { height: TOTAL_HEIGHT }]}>
       {/* 1. Sliding Background Curve */}
-      <View style={[StyleSheet.absoluteFill, styles.bgContainer]}>
+      <View style={[StyleSheet.absoluteFill, styles.bgContainer]} pointerEvents="none">
         <AnimatedSvg
           width={svgWidth}
           height={TOTAL_HEIGHT}
@@ -102,8 +115,17 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         </AnimatedSvg>
       </View>
 
-      {/* 2. Sliding Raised Circle Bubble */}
-      <Animated.View style={[styles.centerButton, { transform: [{ translateX: circleTranslateX }] }]}>
+      {/* 2. Sliding Raised Circle Bubble (pointerEvents none to never block tab clicks) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.centerButton,
+          {
+            transform: [{ translateX: circleTranslateX }],
+            opacity: activeIndex >= 0 ? 1 : 0,
+          },
+        ]}
+      >
         <View style={styles.centerButtonInner} />
       </Animated.View>
 
@@ -115,14 +137,32 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           const isFocused = activeIndex === index;
 
           const onPress = () => {
-            const event = navigation.emit({
+            const event = navigation?.emit ? navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
-            });
+            }) : { defaultPrevented: false };
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!isFocused && !event?.defaultPrevented) {
+              try {
+                navigation.dispatch({
+                  ...CommonActions.navigate({ name: route.name, merge: true }),
+                  target: state.key,
+                });
+              } catch {
+                try {
+                  navigation?.navigate?.(route.name);
+                } catch {}
+              }
+
+              const tabPath = route.name === 'index' ? '/(tabs)' : `/(tabs)/${route.name}`;
+              try {
+                router.navigate(tabPath as any);
+              } catch {
+                try {
+                  router.replace(tabPath as any);
+                } catch {}
+              }
             }
           };
 
@@ -186,25 +226,26 @@ function TabIcon({ iconName, label, isFocused, onPress, isDailyUpdate }: any) {
 
   return (
     <TouchableOpacity
-      activeOpacity={1}
+      activeOpacity={0.7}
       onPress={onPress}
       style={styles.tabItem}
+      hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
     >
-      <Animated.View style={[styles.iconWrapper, { transform: [{ translateY }] }]}>
+      <Animated.View pointerEvents="none" style={[styles.iconWrapper, { transform: [{ translateY }] }]}>
         {/* Cross-fade icons instead of animating color property */}
-        <Animated.View style={{ position: 'absolute', opacity: inactiveIconOpacity }}>
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', opacity: inactiveIconOpacity }}>
           <Ionicons name={iconName} size={24} color={COLORS.champagne} />
         </Animated.View>
-        <Animated.View style={{ position: 'absolute', opacity: activeIconOpacity }}>
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', opacity: activeIconOpacity }}>
           <Ionicons name={iconName} size={24} color={COLORS.activeText} />
         </Animated.View>
 
-        {isDailyUpdate && <View style={styles.notificationDot} />}
+        {isDailyUpdate && <View pointerEvents="none" style={styles.notificationDot} />}
       </Animated.View>
-      <Animated.Text style={[styles.tabLabel, { color: COLORS.champagne, opacity: labelOpacity }]}>{label}</Animated.Text>
+      <Animated.Text pointerEvents="none" style={[styles.tabLabel, { color: COLORS.champagne, opacity: labelOpacity }]}>{label}</Animated.Text>
 
       {/* Keep the active text fixed at the bottom with the underline */}
-      <Animated.View style={[styles.activeStateContainer, { opacity: underlineOpacity }]}>
+      <Animated.View pointerEvents="none" style={[styles.activeStateContainer, { opacity: underlineOpacity }]}>
         <Text style={[styles.tabLabel, { color: COLORS.activeText, bottom: 12 }]}>{label}</Text>
         <View style={styles.activeUnderline} />
       </Animated.View>
@@ -234,11 +275,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
   },
   tabContent: {
-    flex: 1,
+    height: 75,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 0,
+    zIndex: 20,
+    elevation: 20,
+    position: 'relative',
   },
   tabItem: {
     flex: 1,
@@ -246,6 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
     position: 'relative',
+    zIndex: 25,
   },
   iconWrapper: {
     alignItems: 'center',
@@ -286,7 +331,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,

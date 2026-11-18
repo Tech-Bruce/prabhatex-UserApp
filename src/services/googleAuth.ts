@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, TurboModuleRegistry, NativeModules } from 'react-native';
 
 export interface GoogleAuthResult {
   idToken?: string;
@@ -10,12 +10,29 @@ export interface GoogleAuthResult {
 let isConfigured = false;
 
 /**
+ * Check if the native GoogleSignin module is registered in the native binary.
+ * In Expo Go or Web, the native module is not linked.
+ */
+function isGoogleSigninNativeAvailable(): boolean {
+  if (Platform.OS === 'web') return false;
+  try {
+    const turboMod = TurboModuleRegistry?.get ? TurboModuleRegistry.get('RNGoogleSignin') : null;
+    if (turboMod) return true;
+    const legacyMod = NativeModules?.RNGoogleSignin;
+    if (legacyMod) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Safely retrieve the native GoogleSignin module if available.
  * If running in Expo Go or Web, importing this module throws an Invariant Violation.
- * Using lazy require inside try-catch allows the app to run in Expo Go without crashing.
+ * Checking native availability first avoids triggering TurboModuleRegistry.getEnforcing.
  */
 function getGoogleSigninModule(): any | null {
-  if (Platform.OS === 'web') return null;
+  if (!isGoogleSigninNativeAvailable()) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('@react-native-google-signin/google-signin');
@@ -24,14 +41,13 @@ function getGoogleSigninModule(): any | null {
     }
     return null;
   } catch {
-    // RNGoogleSignin is not linked (running in Expo Go)
     return null;
   }
 }
 
 export function configureGoogleSignIn(): boolean {
   if (isConfigured) return true;
-  if (Platform.OS === 'web') return false;
+  if (!isGoogleSigninNativeAvailable()) return false;
 
   const mod = getGoogleSigninModule();
   if (!mod?.GoogleSignin) {

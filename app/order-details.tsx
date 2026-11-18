@@ -36,6 +36,7 @@ interface OrderItem {
 interface OrderData {
   id: string;
   orderNumber?: string;
+  displayOrderId?: string;
   status: string;
   refundStatus?: string;
   totalRefunded?: number | string;
@@ -146,8 +147,9 @@ export default function OrderDetailsScreen() {
   const handleShare = async () => {
     if (!order) return;
     try {
+      const formattedId = order.displayOrderId || (order.orderNumber ? 'PT' + (parseInt(order.orderNumber, 10) + 100).toString().padStart(4, '0') : 'PT' + order.id.substring(0, 4).toUpperCase());
       await Share.share({
-        message: `Order #${order.orderNumber || order.id.substring(0, 8)} from Prabha Tex - Total: ₹${order.totalAmount}. Status: ${order.status}`,
+        message: `Order ${formattedId} from Prabha Tex - Total: ₹${order.totalAmount}. Status: ${order.status}`,
       });
     } catch {
       // Ignored
@@ -226,10 +228,26 @@ export default function OrderDetailsScreen() {
   const primaryItem = items[0];
   const primaryProduct = primaryItem?.product;
 
-  const displayOrderNum = order.orderNumber || order.id.substring(0, 8).toUpperCase();
+  const formatOrderId = (o: OrderData | null) => {
+    if (!o) return 'PT0100';
+    if (o.displayOrderId) return o.displayOrderId;
+    const num = o.orderNumber !== undefined && o.orderNumber !== null ? parseInt(String(o.orderNumber), 10) : NaN;
+    if (!isNaN(num)) {
+      return 'PT' + (num + 100).toString().padStart(4, '0');
+    }
+    const idStr = String(o.id || '');
+    if (idStr.startsWith('PT')) return idStr;
+    const idNum = parseInt(idStr, 10);
+    if (!isNaN(idNum) && !idStr.includes('-')) {
+      return 'PT' + (idNum + 100).toString().padStart(4, '0');
+    }
+    return idStr ? `PT${idStr.slice(-4).toUpperCase()}` : 'PT0100';
+  };
+
+  const displayOrderNum = formatOrderId(order);
   const primaryProductName =
     primaryProduct?.productName ||
-    (order.orderNumber ? `Order #${order.orderNumber}` : 'Traditional Handcrafted Saree');
+    `Order ${displayOrderNum}`;
   const primaryProductImage = getProductImage(primaryProduct);
 
   const orderDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
@@ -299,7 +317,7 @@ export default function OrderDetailsScreen() {
           <View style={styles.heroHeaderRow}>
             <View style={styles.orderNumberBadge}>
               <Ionicons name="receipt-outline" size={13} color="#850404" />
-              <Text style={styles.orderNumberBadgeText}>Order #{displayOrderNum}</Text>
+              <Text style={styles.orderNumberBadgeText}>{displayOrderNum}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {order.refundStatus === 'refunded' ? (

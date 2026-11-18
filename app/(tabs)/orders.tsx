@@ -5,6 +5,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/src/utils/axiosInstance';
 
+const formatOrderId = (order: any) => {
+  if (!order) return 'PT0100';
+  if (order.displayOrderId) return order.displayOrderId;
+  const num = order.orderNumber !== undefined && order.orderNumber !== null ? parseInt(String(order.orderNumber), 10) : NaN;
+  if (!isNaN(num)) {
+    return 'PT' + (num + 100).toString().padStart(4, '0');
+  }
+  const idStr = String(order.id || '');
+  if (idStr.startsWith('PT')) return idStr;
+  const idNum = parseInt(idStr, 10);
+  if (!isNaN(idNum) && !idStr.includes('-')) {
+    return 'PT' + (idNum + 100).toString().padStart(4, '0');
+  }
+  return idStr ? `PT${idStr.slice(-4).toUpperCase()}` : 'PT0100';
+};
+
 export default function OrdersScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -96,7 +112,8 @@ export default function OrdersScreen() {
               }
             }
 
-            const productName = product ? product.productName : `Order #${order.orderNumber}`;
+            const formattedOrderId = formatOrderId(order);
+            const productName = product ? product.productName : `Order ${formattedOrderId}`;
             const s = order.status?.toLowerCase() || '';
             const displayStatus = s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -114,7 +131,7 @@ export default function OrdersScreen() {
                 })}
               >
                 <View style={styles.orderHeader}>
-                  <Text style={styles.orderId}>Order #{order.orderNumber || order.id.substring(0,8)}</Text>
+                  <Text style={styles.orderId}>{formattedOrderId}</Text>
                   <View style={[styles.statusBadge, displayStatus === 'Delivered' && styles.statusDelivered, displayStatus === 'Returned' && styles.statusReturned]}>
                     <Text style={[styles.statusText, displayStatus === 'Delivered' && styles.statusDeliveredText, displayStatus === 'Returned' && styles.statusReturnedText]}>
                       {displayStatus}
@@ -149,7 +166,7 @@ export default function OrdersScreen() {
                         pathname: '/track-order',
                         params: {
                           awbNo: order.awbNo,
-                          orderNumber: order.orderNumber || order.id.substring(0,8),
+                          orderNumber: formattedOrderId,
                           productName: productName,
                           imageUrl: imageUrl,
                           price: order.totalAmount,

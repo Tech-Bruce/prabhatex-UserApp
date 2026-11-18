@@ -9,6 +9,7 @@ import { CartProvider } from '@/src/context/CartContext';
 import { WishlistProvider } from '@/src/context/WishlistContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { OfflineNotice } from '@/src/components/OfflineNotice';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -108,6 +109,7 @@ export default function RootLayout() {
           />
         </Animated.View>
       )}
+      <OfflineNotice />
       <Toast />
     </View>
     </CartProvider>

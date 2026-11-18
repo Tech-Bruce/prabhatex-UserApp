@@ -38,6 +38,7 @@ export default function EditProfileScreen() {
               value={name}
               onChangeText={setName}
               placeholder="Enter your name"
+              placeholderTextColor="#9CA3AF"
             />
           </View>
         </View>
@@ -51,6 +52,7 @@ export default function EditProfileScreen() {
               value={email}
               onChangeText={setEmail}
               placeholder="Enter your email"
+              placeholderTextColor="#9CA3AF"
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -66,6 +68,7 @@ export default function EditProfileScreen() {
               value={phone}
               onChangeText={setPhone}
               placeholder="Enter your phone number"
+              placeholderTextColor="#9CA3AF"
               keyboardType="phone-pad"
             />
           </View>

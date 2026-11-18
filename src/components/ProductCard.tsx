@@ -18,6 +18,8 @@ export interface ProductCardProps {
     finalPrice: string;
     productImages?: string[];
     category?: { category: string };
+    sizes?: Array<{ size: string; stock: number | string }> | any[];
+    colors?: any[];
   };
   style?: object;
   width?: number | string;
@@ -157,14 +159,28 @@ export default function ProductCard({ product, style, width: customWidth }: Prod
         {/* Add to Cart Button */}
         <TouchableOpacity 
           style={styles.addToCartBtn} 
-          onPress={() => {
+          onPress={async () => {
             if (!user) {
               Toast.show({ type: 'info', text1: 'Login Required', text2: 'Please login to add to cart' });
               router.push('/login');
               return;
             }
 
-            addToCart({
+            const hasSizes = (Array.isArray(product.sizes) && product.sizes.length > 0) ||
+              (Array.isArray(product.colors) && product.colors.some((c: any) => Array.isArray(c?.sizes) && c.sizes.length > 0));
+            const hasColors = Array.isArray(product.colors) && product.colors.length > 0;
+
+            if (hasSizes || hasColors) {
+              Toast.show({
+                type: 'info',
+                text1: 'Select Options',
+                text2: `Please select your ${hasSizes && hasColors ? 'size and color' : hasSizes ? 'size' : 'color'} on the product page`,
+              });
+              router.push({ pathname: '/product/[id]', params: { id: product.id } });
+              return;
+            }
+
+            const res = await addToCart({
               id: product.id,
               name: product.productName,
               price: finalPriceNum,
@@ -172,7 +188,12 @@ export default function ProductCard({ product, style, width: customWidth }: Prod
               quantity: 1,
               maxStock: 10,
             });
-            Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${product.productName} added!` });
+            if (res?.success) {
+              Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${product.productName} added!` });
+            } else {
+              Toast.show({ type: 'error', text1: 'Selection Required', text2: res?.message || 'Please select options on product page' });
+              router.push({ pathname: '/product/[id]', params: { id: product.id } });
+            }
           }}
         >
           <Text style={styles.addToCartText}>Add to Cart</Text>

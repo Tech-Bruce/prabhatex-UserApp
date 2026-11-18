@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,9 +11,24 @@ const { width } = Dimensions.get('window');
 export default function CartScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { cart, removeFromCart, updateQuantity, totalPrice, totalItems } = useCart();
+  const { cart, removeFromCart, updateQuantity, totalPrice, totalItems, refreshCart } = useCart();
+
+  useEffect(() => {
+    refreshCart?.();
+  }, [refreshCart]);
+
+  const outOfStockItems = cart.filter(item => item.maxStock <= 0 || item.quantity > item.maxStock);
+  const hasOutOfStock = outOfStockItems.length > 0;
 
   const handleCheckout = () => {
+    if (hasOutOfStock) {
+      Toast.show({
+        type: 'error',
+        text1: 'Out of Stock',
+        text2: 'Please remove sold-out items before proceeding to checkout.',
+      });
+      return;
+    }
     router.push('/checkout');
   };
 
@@ -54,19 +69,50 @@ export default function CartScreen() {
       {/* ScrollView now has flex: 1 to ensure the bottom bar stays sticky */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {cart.map((item) => (
-          <View key={`${item.id}-${item.size}`} style={styles.cartItem}>
-            <Image source={{ uri: getImageUrl(item.image) }} style={styles.itemImage} />
+        {cart.map((item) => {
+          const isOutOfStock = item.maxStock <= 0;
+          const isQuantityExceeded = !isOutOfStock && item.quantity > item.maxStock;
+
+          return (
+          <View key={`${item.id}-${item.size}-${item.color}`} style={[styles.cartItem, isOutOfStock && styles.outOfStockCartItem]}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => router.push(`/product/${item.id}`)}
+              style={styles.imageWrap}
+            >
+              <Image source={{ uri: getImageUrl(item.image) }} style={[styles.itemImage, isOutOfStock && styles.dimmedImage]} />
+              {isOutOfStock && (
+                <View style={styles.soldOutBadge}>
+                  <Text style={styles.soldOutBadgeText}>SOLD OUT</Text>
+                </View>
+              )}
+            </TouchableOpacity>
             
             <View style={styles.itemDetails}>
               <View style={styles.itemHeader}>
-                <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                <TouchableOpacity 
+                  style={{ flex: 1, marginRight: 8 }}
+                  activeOpacity={0.7}
+                  onPress={() => router.push(`/product/${item.id}`)}
+                >
+                  <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => removeFromCart(item.id, item.cartId)} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <Ionicons name="close-circle" size={24} color="#BDBDBD" />
                 </TouchableOpacity>
               </View>
               
-              <Text style={styles.itemVariant}>Size: {item.size || 'N/A'}</Text>
+              <View style={styles.variantRow}>
+                {item.color ? <Text style={styles.itemVariant}>Color: {item.color}  •  </Text> : null}
+                <Text style={styles.itemVariant}>Size: {item.size || 'N/A'}</Text>
+              </View>
+
+              {isOutOfStock && (
+                <Text style={styles.outOfStockNotice}>Item is sold out. Please remove to continue.</Text>
+              )}
+              {isQuantityExceeded && (
+                <Text style={styles.quantityNotice}>Only {item.maxStock} available in stock.</Text>
+              )}
               
               <View style={styles.priceAndQty}>
                 <Text style={styles.itemPrice}>₹{item.price.toLocaleString('en-IN')}</Text>
@@ -80,16 +126,17 @@ export default function CartScreen() {
                   </TouchableOpacity>
                   <Text style={styles.stepperValue}>{item.quantity}</Text>
                   <TouchableOpacity 
-                    style={styles.stepperBtn} 
-                    onPress={() => updateQuantity(item.id, Math.min(item.maxStock || 10, item.quantity + 1), item.cartId)}
+                    style={[styles.stepperBtn, (isOutOfStock || item.quantity >= item.maxStock) && styles.disabledStepperBtn]} 
+                    disabled={isOutOfStock || item.quantity >= item.maxStock}
+                    onPress={() => updateQuantity(item.id, Math.min(item.maxStock, item.quantity + 1), item.cartId)}
                   >
-                    <Ionicons name="add" size={16} color="#555" />
+                    <Ionicons name="add" size={16} color={isOutOfStock || item.quantity >= item.maxStock ? '#ccc' : '#555'} />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </View>
-        ))}
+        );})}
 
         {/* Order Summary */}
         <View style={styles.summaryCard}>
@@ -104,6 +151,15 @@ export default function CartScreen() {
             <Text style={styles.summaryLabel}>Delivery Charges</Text>
             <Text style={styles.summaryValueFree}>Calculated at checkout</Text>
           </View>
+
+          {hasOutOfStock && (
+            <View style={styles.summaryWarningBox}>
+              <Ionicons name="alert-circle" size={18} color="#DC2626" style={{ marginRight: 6 }} />
+              <Text style={styles.summaryWarningText}>
+                Some items in your bag are out of stock. Please remove them before checkout.
+              </Text>
+            </View>
+          )}
 
           <View style={styles.divider} />
           
@@ -120,14 +176,21 @@ export default function CartScreen() {
       </ScrollView>
 
       {/* Sticky Bottom Bar */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) + 10 }]}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 36 : 14) + 12 }]}>
         <View style={styles.bottomTotalCol}>
           <Text style={styles.bottomTotalLabel}>Grand Total</Text>
           <Text style={styles.bottomTotalValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>
         </View>
-        <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
-          <Text style={styles.checkoutBtnText}>CHECKOUT</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+        <TouchableOpacity 
+          style={[styles.checkoutBtn, hasOutOfStock && styles.disabledCheckoutBtn]} 
+          onPress={handleCheckout}
+          disabled={hasOutOfStock}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.checkoutBtnText}>
+            {hasOutOfStock ? 'OUT OF STOCK' : 'CHECKOUT'}
+          </Text>
+          {!hasOutOfStock && <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -177,5 +240,18 @@ const styles = StyleSheet.create({
   bottomTotalLabel: { fontSize: 12, color: '#757575', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   bottomTotalValue: { fontSize: 22, fontWeight: 'bold', color: '#212121' },
   checkoutBtn: { backgroundColor: '#850404', flexDirection: 'row', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowColor: '#850404', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
+  disabledCheckoutBtn: { backgroundColor: '#9CA3AF', shadowOpacity: 0, elevation: 0 },
   checkoutBtnText: { color: '#FFF', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
+
+  outOfStockCartItem: { borderWidth: 1.5, borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' },
+  imageWrap: { position: 'relative' },
+  dimmedImage: { opacity: 0.4 },
+  soldOutBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: '#DC2626', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  soldOutBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  variantRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 },
+  outOfStockNotice: { fontSize: 11, fontWeight: '700', color: '#DC2626', marginTop: 4 },
+  quantityNotice: { fontSize: 11, fontWeight: '700', color: '#D97706', marginTop: 4 },
+  disabledStepperBtn: { backgroundColor: '#F3F4F6' },
+  summaryWarningBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 8, padding: 10, marginVertical: 10 },
+  summaryWarningText: { flex: 1, fontSize: 12, fontWeight: '600', color: '#DC2626' },
 });

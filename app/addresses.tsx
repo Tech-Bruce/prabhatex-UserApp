@@ -155,15 +155,75 @@ export default function AddressesScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{editingId ? 'Edit Address' : 'Add New Address'}</Text>
             
-            <TextInput style={styles.input} placeholder="Full Name" value={form.fullName} onChangeText={(t) => setForm(p => ({...p, fullName: t}))} />
-            <TextInput style={styles.input} placeholder="Phone Number" keyboardType="phone-pad" value={form.phoneNumber} onChangeText={(t) => setForm(p => ({...p, phoneNumber: t}))} />
-            <TextInput style={styles.input} placeholder="Street Address" value={form.street} onChangeText={(t) => setForm(p => ({...p, street: t}))} />
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name <Text style={styles.requiredStar}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. John Doe"
+                placeholderTextColor="#9CA3AF"
+                value={form.fullName}
+                onChangeText={(t) => setForm(p => ({...p, fullName: t}))}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Phone Number <Text style={styles.requiredStar}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 9876543210 (10 digits)"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={form.phoneNumber}
+                onChangeText={(t) => setForm(p => ({...p, phoneNumber: t.replace(/\D/g, '').slice(0, 10)}))}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Street Address <Text style={styles.requiredStar}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="House / Flat No, Street, Landmark"
+                placeholderTextColor="#9CA3AF"
+                value={form.street}
+                onChangeText={(t) => setForm(p => ({...p, street: t}))}
+              />
+            </View>
             
             <View style={styles.row}>
-              <TextInput style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="City" value={form.city} onChangeText={(t) => setForm(p => ({...p, city: t}))} />
-              <TextInput style={[styles.input, { flex: 1 }]} placeholder="State" value={form.state} onChangeText={(t) => setForm(p => ({...p, state: t}))} />
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.inputLabel}>City <Text style={styles.requiredStar}>*</Text></Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Chennai"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.city}
+                  onChangeText={(t) => setForm(p => ({...p, city: t}))}
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.inputLabel}>State <Text style={styles.requiredStar}>*</Text></Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Tamil Nadu"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.state}
+                  onChangeText={(t) => setForm(p => ({...p, state: t}))}
+                />
+              </View>
             </View>
-            <TextInput style={styles.input} placeholder="Zip Code" keyboardType="number-pad" value={form.zipCode} onChangeText={(t) => setForm(p => ({...p, zipCode: t}))} />
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>PIN / Zip Code <Text style={styles.requiredStar}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 600001"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                value={form.zipCode}
+                onChangeText={(t) => setForm(p => ({...p, zipCode: t}))}
+              />
+            </View>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setModalVisible(false)}>
@@ -306,15 +366,27 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 20,
   },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  requiredStar: {
+    color: '#DC2626',
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 15,
-    color: '#333',
-    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1F2937',
+    backgroundColor: '#FFFFFF',
   },
   row: {
     flexDirection: 'row',
